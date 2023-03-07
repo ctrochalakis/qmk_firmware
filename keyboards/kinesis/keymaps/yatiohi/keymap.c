@@ -76,7 +76,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     _______,_______,_______,_______,_______,_______,
     _______,_______,_______,_______,_______,_______,
             _______,_______,_______,_______,
-                        _______,_______,
+                        _______,QK_LEAD,
                                 _______,
                 _______,_______,_______
     ),
@@ -106,3 +106,12 @@ void matrix_init_user(void) {
   layer_on(MINE);
 }
 
+void leader_start_user(void) {
+    // Do something when the leader key is pressed
+}
+
+void leader_end_user(void) {
+    if (leader_sequence_one_key(KC_E)) {
+        SEND_STRING("if err != nil {\n}");
+    }
+}
