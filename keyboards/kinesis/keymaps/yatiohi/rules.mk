@@ -9,3 +9,6 @@ AUDIO_ENABLE = no           # Audio output
 RGBLIGHT_ENABLE = no        # Enable WS2812 RGB underlight. 
 UNICODE_ENABLE = yes        # Unicode
 LEADER_ENABLE = yes
+
+COMBO_ENABLE = yes
+SRC += combo.c
