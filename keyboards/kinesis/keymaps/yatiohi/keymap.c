@@ -113,5 +113,7 @@ void leader_start_user(void) {
 void leader_end_user(void) {
     if (leader_sequence_one_key(KC_E)) {
         SEND_STRING("if err != nil {\n}");
+    } else if (leader_sequence_one_key(QK_LEAD)) {
+        tap_code(KC_LCTL); // mapped to CAPS
     }
 }
