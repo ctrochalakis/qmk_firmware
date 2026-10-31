@@ -1,5 +1,6 @@
 #include QMK_KEYBOARD_H
 #include "version.h"
+#include "print.h"
 
 // Documentation:
 // https://github.com/qmk/qmk_firmware/blob/master/docs/keycodes.md
@@ -81,6 +82,10 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 void matrix_init_user(void) {
   layer_on(MINE);
+}
+
+void keyboard_post_init_user(void) {
+  uprintf("yatiohi %s %s %s\n", QMK_VERSION, QMK_GIT_HASH, QMK_BUILDDATE);
 }
 
 void leader_start_user(void) {
