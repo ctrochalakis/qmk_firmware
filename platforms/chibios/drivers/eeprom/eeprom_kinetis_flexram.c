@@ -40,8 +40,8 @@
  * SOFTWARE.
  */
 
-#if defined(K20x) /* chip selection */
-/* Teensy 3.0, 3.1, 3.2; mchck; infinity keyboard */
+#if defined(K20x) || defined(MK66F18) /* chip selection */
+/* Teensy 3.0, 3.1, 3.2, 3.6; mchck; infinity keyboard */
 
 /*
     ^^^ Here be dragons:
@@ -76,6 +76,101 @@
 #        define EEESIZE 0x39
 #    endif
 
+#if defined(MK66F18) /* Teensy 3.6: 4096 bytes FlexNVM EEPROM, cf. QMK #12946/#12947.
+                       * Partition values below were tested on this hardware; do not change lightly. */
+#    if (EEPROM_SIZE == 4096)
+#        define EEPROM_MAX 4096
+#        define EEPARTITION 0x05 // 128K dataflash for EEPROM, 128K for Data
+#        define EEESPLIT 0x10   // best endurance: 0x00 = first 12%, 0x10 = first 25%, 0x30 = all equal
+#    endif
+#    if (EEPROM_SIZE == 4096)
+#        define EEESIZE 0x02
+#    elif (EEPROM_SIZE == 2048)
+#        define EEESIZE 0x03
+#    elif (EEPROM_SIZE == 1024)
+#        define EEESIZE 0x04
+#    elif (EEPROM_SIZE == 512)
+#        define EEESIZE 0x05
+#    elif (EEPROM_SIZE == 256)
+#        define EEESIZE 0x06
+#    elif (EEPROM_SIZE == 128)
+#        define EEESIZE 0x07
+#    elif (EEPROM_SIZE == 64)
+#        define EEESIZE 0x08
+#    elif (EEPROM_SIZE == 32)
+#        define EEESIZE 0x09
+#    endif
+
+/* HSRUN mode must be exited while programming/using the FlexNVM EEPROM on
+ * MK66. Only the 120 MHz sys / 60 MHz bus configuration used by QMK is
+ * supported here; anything else refuses to switch modes (returns 0). */
+#    ifndef SMC_PMSTAT_RUN
+#        define SMC_PMSTAT_RUN ((uint8_t)0x01)
+#    endif
+#    ifndef SMC_PMSTAT_HSRUN
+#        define SMC_PMSTAT_HSRUN ((uint8_t)0x80)
+#    endif
+#    ifndef F_CPU
+#        define F_CPU KINETIS_SYSCLK_FREQUENCY
+#    endif
+#    ifndef F_BUS
+#        define F_BUS KINETIS_BUSCLK_FREQUENCY
+#    endif
+
+static int kinetis_hsrun_disable(void) {
+    if (SMC->PMSTAT == SMC_PMSTAT_HSRUN) {
+        /* First, reduce the CPU clock speed to stay within RUN limits. */
+#    if F_CPU == 120000000 && F_BUS == 60000000
+        SIM->CLKDIV1 = SIM_CLKDIV1_OUTDIV1(KINETIS_CLKDIV1_OUTDIV1 - 1) | SIM_CLKDIV1_OUTDIV2(KINETIS_CLKDIV1_OUTDIV2 - 1) | SIM_CLKDIV1_OUTDIV3(KINETIS_CLKDIV1_OUTDIV3 - 1) | SIM_CLKDIV1_OUTDIV4(KINETIS_CLKDIV1_OUTDIV4 - 1);
+#    else
+        return 0;
+#    endif
+        /* Then turn off HSRUN mode. */
+        SMC->PMCTRL = SMC_PMCTRL_RUNM_SET(0);
+        while (SMC->PMSTAT == SMC_PMSTAT_HSRUN)
+            ;
+        return 1;
+    }
+    return 0;
+}
+
+static int kinetis_hsrun_enable(void) {
+    if (SMC->PMSTAT == SMC_PMSTAT_RUN) {
+        /* Turn HSRUN mode back on. */
+        SMC->PMCTRL = SMC_PMCTRL_RUNM_SET(3);
+        while (SMC->PMSTAT != SMC_PMSTAT_HSRUN) {
+            ;
+        }
+        /* Then configure clock for full speed. */
+#    if F_CPU == 120000000 && F_BUS == 60000000
+        SIM->CLKDIV1 = SIM_CLKDIV1_OUTDIV1(KINETIS_CLKDIV1_OUTDIV1 - 1) | SIM_CLKDIV1_OUTDIV2(KINETIS_CLKDIV1_OUTDIV2 - 1) | SIM_CLKDIV1_OUTDIV3(KINETIS_CLKDIV1_OUTDIV3 - 1) | SIM_CLKDIV1_OUTDIV4(KINETIS_CLKDIV1_OUTDIV4 - 1);
+#    else
+        return 0;
+#    endif
+        return 1;
+    }
+    return 0;
+}
+
+#    define KINETIS_EEPROM_WRITE_PRE()             \
+        do {                                      \
+            kinetis_hsrun_disable();              \
+            uint8_t _eestat = FTFL->FSTAT & 0x70; \
+            if (_eestat) FTFL->FSTAT = _eestat;    \
+        } while (0)
+#    define KINETIS_EEPROM_WRITE_POST() \
+        do {                          \
+            kinetis_hsrun_enable();   \
+        } while (0)
+#else
+#    define KINETIS_EEPROM_WRITE_PRE() \
+        do {                          \
+        } while (0)
+#    define KINETIS_EEPROM_WRITE_POST() \
+        do {                            \
+        } while (0)
+#endif
+
 /** \brief eeprom initialization
  *
  * FIXME: needs doc
@@ -88,13 +183,25 @@ void eeprom_initialize(void) {
     if (FTFL->FCNFG & FTFL_FCNFG_RAMRDY) {
         // FlexRAM is configured as traditional RAM
         // We need to reconfigure for EEPROM usage
-        FTFL->FCCOB0 = 0x80;    // PGMPART = Program Partition Command
+#if defined(MK66F18)
+        kinetis_hsrun_disable();
+#endif
+        FTFL->FCCOB0 = 0x80; // PGMPART = Program Partition Command
+#if defined(MK66F18)
+        FTFL->FCCOB3 = 0;
+        FTFL->FCCOB4 = EEESPLIT | EEESIZE; // EEPROM Size
+        FTFL->FCCOB5 = EEPARTITION;
+#else
         FTFL->FCCOB4 = EEESIZE; // EEPROM Size
         FTFL->FCCOB5 = 0x03;    // 0K for Dataflash, 32K for EEPROM backup
+#endif
         __disable_irq();
         // do_flash_cmd() must execute from RAM.  Luckily the C syntax is simple...
         (*((void (*)(volatile uint8_t *))((uint32_t)do_flash_cmd | 1)))(&(FTFL->FSTAT));
         __enable_irq();
+#if defined(MK66F18)
+        kinetis_hsrun_enable();
+#endif
         status = FTFL->FSTAT;
         if (status & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL)) {
             FTFL->FSTAT = (status & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL));
@@ -103,7 +210,11 @@ void eeprom_initialize(void) {
     }
     // wait for eeprom to become ready (is this really necessary?)
     while (!(FTFL->FCNFG & FTFL_FCNFG_EEERDY)) {
+#if defined(MK66F18)
+        if (++count > 200000) break;
+#else
         if (++count > 20000) break;
+#endif
     }
 }
 
@@ -186,8 +297,10 @@ void eeprom_write_byte(uint8_t *addr, uint8_t value) {
     if (offset >= EEPROM_SIZE) return;
     if (!(FTFL->FCNFG & FTFL_FCNFG_EEERDY)) eeprom_initialize();
     if (FlexRAM[offset] != value) {
-        FlexRAM[offset] = value;
+        KINETIS_EEPROM_WRITE_PRE();
+        FlexRAM[offset] = value;;
         flexram_wait();
+        KINETIS_EEPROM_WRITE_POST();
     }
 }
 
@@ -204,18 +317,24 @@ void eeprom_write_word(uint16_t *addr, uint16_t value) {
     if ((offset & 1) == 0) {
 #    endif
         if (*(uint16_t *)(&FlexRAM[offset]) != value) {
-            *(uint16_t *)(&FlexRAM[offset]) = value;
+            KINETIS_EEPROM_WRITE_PRE();
+            *(uint16_t *)(&FlexRAM[offset]) = value;;
             flexram_wait();
+            KINETIS_EEPROM_WRITE_POST();
         }
 #    ifdef HANDLE_UNALIGNED_WRITES
     } else {
         if (FlexRAM[offset] != value) {
-            FlexRAM[offset] = value;
+            KINETIS_EEPROM_WRITE_PRE();
+            FlexRAM[offset] = value;;
             flexram_wait();
+            KINETIS_EEPROM_WRITE_POST();
         }
         if (FlexRAM[offset + 1] != (value >> 8)) {
-            FlexRAM[offset + 1] = value >> 8;
+            KINETIS_EEPROM_WRITE_PRE();
+            FlexRAM[offset + 1] = value >> 8;;
             flexram_wait();
+            KINETIS_EEPROM_WRITE_POST();
         }
     }
 #    endif
@@ -235,33 +354,45 @@ void eeprom_write_dword(uint32_t *addr, uint32_t value) {
         case 0:
 #    endif
             if (*(uint32_t *)(&FlexRAM[offset]) != value) {
-                *(uint32_t *)(&FlexRAM[offset]) = value;
+                KINETIS_EEPROM_WRITE_PRE();
+                *(uint32_t *)(&FlexRAM[offset]) = value;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             return;
 #    ifdef HANDLE_UNALIGNED_WRITES
         case 2:
             if (*(uint16_t *)(&FlexRAM[offset]) != value) {
-                *(uint16_t *)(&FlexRAM[offset]) = value;
+                KINETIS_EEPROM_WRITE_PRE();
+                *(uint16_t *)(&FlexRAM[offset]) = value;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             if (*(uint16_t *)(&FlexRAM[offset + 2]) != (value >> 16)) {
-                *(uint16_t *)(&FlexRAM[offset + 2]) = value >> 16;
+                KINETIS_EEPROM_WRITE_PRE();
+                *(uint16_t *)(&FlexRAM[offset + 2]) = value >> 16;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             return;
         default:
             if (FlexRAM[offset] != value) {
-                FlexRAM[offset] = value;
+                KINETIS_EEPROM_WRITE_PRE();
+                FlexRAM[offset] = value;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             if (*(uint16_t *)(&FlexRAM[offset + 1]) != (value >> 8)) {
-                *(uint16_t *)(&FlexRAM[offset + 1]) = value >> 8;
+                KINETIS_EEPROM_WRITE_PRE();
+                *(uint16_t *)(&FlexRAM[offset + 1]) = value >> 8;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             if (FlexRAM[offset + 3] != (value >> 24)) {
-                FlexRAM[offset + 3] = value >> 24;
+                KINETIS_EEPROM_WRITE_PRE();
+                FlexRAM[offset + 3] = value >> 24;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
     }
 #    endif
@@ -289,8 +420,10 @@ void eeprom_write_block(const void *buf, void *addr, size_t len) {
             val32 |= (*src++ << 16);
             val32 |= (*src++ << 24);
             if (*(uint32_t *)(&FlexRAM[offset]) != val32) {
-                *(uint32_t *)(&FlexRAM[offset]) = val32;
+                KINETIS_EEPROM_WRITE_PRE();
+                *(uint32_t *)(&FlexRAM[offset]) = val32;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             offset += 4;
             len -= 4;
@@ -300,8 +433,10 @@ void eeprom_write_block(const void *buf, void *addr, size_t len) {
             val16 = *src++;
             val16 |= (*src++ << 8);
             if (*(uint16_t *)(&FlexRAM[offset]) != val16) {
-                *(uint16_t *)(&FlexRAM[offset]) = val16;
+                KINETIS_EEPROM_WRITE_PRE();
+                *(uint16_t *)(&FlexRAM[offset]) = val16;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             offset += 2;
             len -= 2;
@@ -309,8 +444,10 @@ void eeprom_write_block(const void *buf, void *addr, size_t len) {
             // write 8 bits
             uint8_t val8 = *src++;
             if (FlexRAM[offset] != val8) {
-                FlexRAM[offset] = val8;
+                KINETIS_EEPROM_WRITE_PRE();
+                FlexRAM[offset] = val8;;
                 flexram_wait();
+                KINETIS_EEPROM_WRITE_POST();
             }
             offset++;
             len--;

@@ -247,7 +247,7 @@ ifneq ($(strip $(EEPROM_DRIVER)),none)
           OPT_DEFS += -DEEPROM_DRIVER -DEEPROM_WEAR_LEVELING
           SRC += eeprom_driver.c eeprom_wear_leveling.c
           WEAR_LEVELING_DRIVER ?= rp2040_flash
-        else ifneq ($(filter $(MCU_SERIES),KL2x K20x),)
+        else ifneq ($(filter $(MCU_SERIES),KL2x K20x MK66F18),)
           # Teensy EEPROM implementations
           OPT_DEFS += -DEEPROM_KINETIS_FLEXRAM
           SRC += eeprom_kinetis_flexram.c

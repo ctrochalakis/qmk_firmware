@@ -18,6 +18,13 @@
 #    ifndef EEPROM_SIZE
 #        define EEPROM_SIZE 32
 #    endif
+#elif defined(MK66F18) /* Teensy 3.6 */
+/* The Teensy 3.6 comes with 4096 bytes of emulated EEPROM (FlexNVM).
+ * See kinx-project/kint and QMK #12946/#12947. Partitioning values below
+ * were tested on this hardware; do not change them lightly. */
+#    ifndef EEPROM_SIZE
+#        define EEPROM_SIZE 4096
+#    endif
 #elif defined(KL2x) /* Teensy LC (emulated) */
 #    define EEPROM_SIZE 128
 #else
