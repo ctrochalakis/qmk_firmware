@@ -94,6 +94,7 @@ void leader_start_user(void) {
 
 void leader_end_user(void) {
     if (leader_sequence_one_key(KC_V)) {
+        uprintf("yatiohi %s %s %s\n", QMK_VERSION, QMK_GIT_HASH, QMK_BUILDDATE);
         SEND_STRING("yatiohi " QMK_VERSION " " QMK_GIT_HASH " " QMK_BUILDDATE);
     } else if (leader_sequence_one_key(QK_LEAD)) {
         tap_code(KC_LCTL); // mapped to CAPS
