@@ -16,4 +16,3 @@ INTROSPECTION_KEYMAP_C = combo.c
 #SRC += combo.c
 
 VIA_ENABLE = yes            # VIA protocol (dynamic keymap over Raw HID)
-VIAL_ENABLE = yes           # Vial (uses VIA transport + vial.json)
