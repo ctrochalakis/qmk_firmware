@@ -1,7 +1,7 @@
 BOOTMAGIC_ENABLE = no       # Enable Bootmagic Lite
 MOUSEKEY_ENABLE = yes       # Mouse keys
 EXTRAKEY_ENABLE = yes       # Audio control and System control
-CONSOLE_ENABLE = yes        # Console for debug (qmk console / hid_listen)
+# CONSOLE_ENABLE = yes       # Console for debug (qmk console / hid_listen) -- disabled for now
 RAW_ENABLE = yes            # Raw HID (Vial/VIA transport, custom HID commands)
 COMMAND_ENABLE = yes        # Commands for debug and configuration
 NKRO_ENABLE = yes

@@ -1,6 +1,6 @@
 #include QMK_KEYBOARD_H
 #include "version.h"
-#include "print.h"
+// #include "print.h" // console debugging (disabled for now)
 
 // Documentation:
 // https://github.com/qmk/qmk_firmware/blob/master/docs/keycodes.md
@@ -85,8 +85,12 @@ void matrix_init_user(void) {
 }
 
 void keyboard_post_init_user(void) {
-  uprintf("yatiohi %s %s %s\n", QMK_VERSION, QMK_GIT_HASH, QMK_BUILDDATE);
+  // uprintf("yatiohi %s %s %s\n", QMK_VERSION, QMK_GIT_HASH, QMK_BUILDDATE);
 }
+
+// void process_combo_event(uint16_t combo_index, bool pressed) {
+//   if (pressed) uprintf("combo %u fired\n", combo_index);
+// }
 
 void leader_start_user(void) {
     // Do something when the leader key is pressed
@@ -94,9 +98,10 @@ void leader_start_user(void) {
 
 void leader_end_user(void) {
     if (leader_sequence_one_key(KC_V)) {
-        uprintf("yatiohi %s %s %s\n", QMK_VERSION, QMK_GIT_HASH, QMK_BUILDDATE);
+        // uprintf("yatiohi %s %s %s\n", QMK_VERSION, QMK_GIT_HASH, QMK_BUILDDATE);
         SEND_STRING("yatiohi " QMK_VERSION " " QMK_GIT_HASH " " QMK_BUILDDATE);
     } else if (leader_sequence_one_key(QK_LEAD)) {
+        // uprintf("leader: tap ctrl\n");
         tap_code(KC_LCTL); // mapped to CAPS
     }
 }
