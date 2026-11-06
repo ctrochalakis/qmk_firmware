@@ -13,6 +13,5 @@ LEADER_ENABLE = yes
 
 COMBO_ENABLE = yes
 INTROSPECTION_KEYMAP_C = combo.c
-#SRC += combo.c
 
 VIA_ENABLE = yes            # VIA protocol (dynamic keymap over Raw HID)

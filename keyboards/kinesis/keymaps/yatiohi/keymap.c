@@ -61,9 +61,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,
     OS_LSFT, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,
     _______, _______, _______, _______, _______, _______, _______, _______,
-    _______, _______, _______, QK_LEAD,
+    _______, _______, _______, KC_BSPC,
     _______, _______,
-    _______, GUI_DEL, _______,
+    QK_LEAD, GUI_DEL, _______,
     _______, _______, _______
 ),
 [QWERTY] = LAYOUT(
@@ -100,6 +100,8 @@ void leader_end_user(void) {
     if (leader_sequence_one_key(KC_V)) {
         // uprintf("yatiohi %s %s %s\n", QMK_VERSION, QMK_GIT_HASH, QMK_BUILDDATE);
         SEND_STRING("yatiohi " QMK_VERSION " " QMK_GIT_HASH " " QMK_BUILDDATE);
+    } else if (leader_sequence_one_key(KC_ENT)) {
+        tap_code16(LALT(KC_ENT));
     } else if (leader_sequence_one_key(QK_LEAD)) {
         // uprintf("leader: tap ctrl\n");
         tap_code(KC_LCTL); // mapped to CAPS
