@@ -9,6 +9,9 @@
 // #define TAPPING_TOGGLE 2
 #define COMBO_COUNT 2
 
+// Combo chord window; QMK default is 50ms.
+#define COMBO_TERM 40
+
 // Board default is 20ms (upstream kint36 heritage); QMK default is 5.
 // Generated info_config.h defines it first, so undefine before overriding.
 #ifdef DEBOUNCE
